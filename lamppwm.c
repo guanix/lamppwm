@@ -34,6 +34,7 @@ void pwm_on(void);
 void pwm_off(void);
 
 volatile uint8_t mode;
+volatile uint8_t full_pwm;
 
 int main(void)
 {
@@ -44,7 +45,7 @@ int main(void)
 void sleep(uint8_t sleep_mode)
 {
     // sleep and wake up on the button pin change
-	PCMSK = _BV(BUTTON_PIN);
+    GIMSK |= _BV(PCIE);
     set_sleep_mode(sleep_mode);
     sleep_enable();
     sleep_bod_disable();
@@ -53,8 +54,9 @@ void sleep(uint8_t sleep_mode)
 
     // We've just woken up from sleep, disable
     cli();
+    GIFR &= ~(_BV(PCIF));
+    GIMSK &= ~(_BV(PCIE));
     sleep_disable();
-    PCMSK = 0;
 }
 
 // Turn PWM on
@@ -74,8 +76,14 @@ inline void pwm_off(void)
 
 inline void setup()
 {
+    // Initialize full power
+    full_pwm = 250;
+
     // Disable watchdog timer
     wdt_disable();
+
+    // Pin change interrupt for the button
+    PCMSK = _BV(BUTTON_PIN);
 
     // Set LED pin to output, bring high (N-channel MOSFET)
     // Set button to output, enable pullup
@@ -122,22 +130,22 @@ inline void loop()
             break;
         case MODE_ON:
             pwm_on();
-            OCR1B = 250;
+            OCR1B = full_pwm;
             sleep(SLEEP_MODE_IDLE);
             break;
         case MODE_SLOWBLINK:
             pwm_on();
-            OCR1B = 30;
+            OCR1B = full_pwm>>3;
             sleep(SLEEP_MODE_IDLE);
             break;
         case MODE_FASTBLINK:
             pwm_on();
-            OCR1B = 120;
+            OCR1B = full_pwm>>2;
             sleep(SLEEP_MODE_IDLE);
             break;
         case MODE_FADE:
             pwm_on();
-            OCR1B = 180;
+            OCR1B = full_pwm>>1;
             sleep(SLEEP_MODE_IDLE);
             break;
     }
