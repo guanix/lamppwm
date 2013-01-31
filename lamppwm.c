@@ -1,15 +1,19 @@
 /*
- * lamp2.c
+ * lamppwm.c
  *
  * Created: 1/21/2013 3:47:13 PM
- *  Author: rmd
+ * Author: rmd, guan
  */ 
 
+#define DEBOUNCE_MS 100
+#define STARTUP_LED_MS 500
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <util/delay.h>
+#include <avr/wdt.h> 
+#include <avr/sfr_defs.h>
 
 #define MODE_OFF 0
 #define MODE_ON 1
@@ -23,16 +27,13 @@
 #define LED_PIN PB3
 #define LED_PWM OCR1B
 
-#define DEBOUNCE_MS 100
-
 void setup(void);
 void loop(void);
 void sleep(uint8_t sleep_mode);
 void pwm_on(void);
 void pwm_off(void);
 
-uint16_t count;
-volatile uint8_t mode = MODE_OFF;
+volatile uint8_t mode;
 
 int main(void)
 {
@@ -57,36 +58,51 @@ void sleep(uint8_t sleep_mode)
 }
 
 // Turn PWM on
-void pwm_on(void)
+inline void pwm_on(void)
 {
-    GTCCR = _BV(PWM1B) | _BV(COM1B0);
+    // OC1B cleared on compare match, set on TCNT1 == 0
+    // ^OC1B not connected
     TCCR1 = _BV(CS13) | _BV(CS10);
     TCNT1 = 0;
-    OCR1C = 255;
-    OCR1B = 60;
 }
 
-void pwm_off(void)
+inline void pwm_off(void)
 {
-    GTCCR = 0;
     TCCR1 = 0;
     TCNT1 = 0;
 }
 
-int i, dir;
-
-void setup()
+inline void setup()
 {
+    // Disable watchdog timer
+    wdt_disable();
+
     // Set LED pin to output, bring high (N-channel MOSFET)
     // Set button to output, enable pullup
     DDRB = _BV(LED_PIN);
     PORTB = _BV(LED_PIN) | _BV(BUTTON_PIN);
+
+    // Turn on for 500 ms to show that we are working
+    PORTB |= _BV(LED_PIN);
+    _delay_ms(STARTUP_LED_MS);
+    PORTB &= ~(_BV(LED_PIN));
+
+    // Set up the timer with a sensible value
+    // see Table 12-1 on page 89
+    GTCCR = _BV(PWM1B) | _BV(COM1B1);
+    OCR1C = 255;
+    OCR1B = 0;
+    PLLCSR = 0;
+    // ... but turn the timer off
+    pwm_off();
+
+    // Start in off mode
+    mode = MODE_OFF;
 }
 
-void loop() 
+inline void loop()
 {
-    // Sleep until we see a button push
-
+    // Is there a button push?
     if (!bit_is_set(PORTB, BUTTON_PIN)) {
         _delay_ms(DEBOUNCE_MS);
         if (!bit_is_set(PORTB, BUTTON_PIN)) {
@@ -98,6 +114,7 @@ void loop()
         }
     }
 
+    // Sleep until we see a button push
     switch (mode) {
         case MODE_OFF:
             pwm_off();
