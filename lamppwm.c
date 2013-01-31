@@ -35,6 +35,7 @@ void pwm_off(void);
 
 volatile uint8_t mode;
 volatile uint8_t full_pwm;
+volatile uint16_t count;
 
 int main(void)
 {
@@ -46,17 +47,27 @@ void sleep(uint8_t sleep_mode)
 {
     // sleep and wake up on the button pin change
     GIMSK |= _BV(PCIE);
+    if (sleep_mode == SLEEP_MODE_PWR_DOWN) {
+        TCCR0B = 0;
+        pwm_off();
+    }
     set_sleep_mode(sleep_mode);
     sleep_enable();
     sleep_bod_disable();
-    sei();
     sleep_cpu();
 
-    // We've just woken up from sleep, disable
     cli();
+    // We've just woken up from sleep, disable
     GIFR &= ~(_BV(PCIF));
     GIMSK &= ~(_BV(PCIE));
     sleep_disable();
+    if (sleep_mode == SLEEP_MODE_PWR_DOWN) {
+        // turn Timer0 back on
+        TCCR0B = _BV(CS02) | _BV(CS00);
+        // don't bother turning PWM back on, wait for a button press
+    }
+
+    sei();
 }
 
 // Turn PWM on
@@ -97,15 +108,22 @@ inline void setup()
 
     // Set up the timer with a sensible value
     // see Table 12-1 on page 89
-    GTCCR = _BV(PWM1B) | _BV(COM1B1);
+    // Timer 1 used for LED PWM, timer 0 for other operations
+    GTCCR = _BV(PWM1B) | _BV(COM1B1);   // Timer1 PWM mode, OCR1B only
+    TCCR0B = _BV(CS02) | _BV(CS00);     // Timer0 prescaler /1024
+    PLLCSR = 0;                         // no peripheral clock
+    TCNT0 = 0;                          // reset the timers
+    TCNT1 = 0;
     OCR1C = 255;
     OCR1B = 0;
-    PLLCSR = 0;
+    TIMSK = _BV(TOIE0);                 // Timer0 overflow interrupt
     // ... but turn the timer off
     pwm_off();
 
     // Start in off mode
     mode = MODE_OFF;
+
+    sei();
 }
 
 inline void loop()
@@ -149,4 +167,9 @@ inline void loop()
             sleep(SLEEP_MODE_IDLE);
             break;
     }
+}
+
+// Timer0 overflow
+ISR(TIMER0_OVF_vect) {
+
 }

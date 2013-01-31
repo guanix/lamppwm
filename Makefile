@@ -1,10 +1,24 @@
-CFLAGS = -Wall -mmcu=attiny85 -DF_CPU=1000000 -Os
-OBJECTS = lamppwm.o
-CC = avr-gcc
-P = lamppwm.hex
+PROJECT		= lamppwm
+F_CPU 		= 1000000
+PART		= attiny85
+CFLAGS		= -Wall -mmcu=$(PART) -DF_CPU=$(F_CPU) -Os
+OBJECTS		= $(PROJECT).o
+CC		= avr-gcc
+P 		= $(PROJECT).hex
+OBJCOPY 	= avr-objcopy
 
 $(P): $(OBJECTS)
-	avr-objcopy -Oihex $(OBJECTS) $(P)
+	$(OBJCOPY) -Oihex $(OBJECTS) $(P)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ $<
+
+install:
+	avrdude -c buspirate -P $(CU) -p $(PART) -U flash:w:$(P)
+
+binary: $(PROJECT).bin
+
+$(PROJECT).bin: $(OBJECTS)
+	$(OBJCOPY) -Obinary $(OBJECTS) $(PROJECT).bin
+
+all: $(P) binary
