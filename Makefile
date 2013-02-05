@@ -22,3 +22,6 @@ $(PROJECT).bin: $(OBJECTS)
 	$(OBJCOPY) -Obinary $(OBJECTS) $(PROJECT).bin
 
 all: $(P) binary
+
+size: $(OBJECTS)
+	avr-size $(OBJECTS)
