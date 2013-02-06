@@ -7,8 +7,10 @@ CC		= avr-gcc
 P 		= $(PROJECT).hex
 OBJCOPY 	= avr-objcopy
 
-$(P): $(OBJECTS)
-	$(OBJCOPY) -Oihex $(OBJECTS) $(P)
+all: $(P) pcintonly.hex
+
+%.hex: %.o
+	$(OBJCOPY) -Oihex $< $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ $<
