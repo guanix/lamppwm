@@ -7,7 +7,7 @@ CC		= avr-gcc
 P 		= $(PROJECT).hex
 OBJCOPY 	= avr-objcopy
 
-all: $(P) pcintonly.hex
+all: $(P) pcintonly.hex sleepworks.hex
 
 %.hex: %.o
 	$(OBJCOPY) -Oihex $< $@
