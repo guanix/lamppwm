@@ -28,7 +28,7 @@ volatile uint16_t timer0_count = 0;
 volatile uint8_t blink_on = 0;
 
 uint8_t bright = 0;
-uint8_t dim = 200;
+uint8_t dim = 180;
 
 int main(void)
 {
@@ -43,12 +43,13 @@ void setup()
     // Enable pullup on button
     DDRB = _BV(LED_PIN);
     PORTB = _BV(BUTTON_PIN);
+	
+	mode = MODE_OFF;
 
     // Pin change interrupt for the button
     PCMSK = _BV(BUTTON_PC);
     GIMSK = _BV(PCIE);
 	GIFR = _BV(PCIF);
-	sei();
 
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
@@ -59,17 +60,18 @@ void setup()
 
     // Timer1 for PWM
 
+	TCCR1 = 0;
+	OCR1C = 255;
+	OCR1B = 255;
+	
     GTCCR = _BV(PWM1B) | _BV(COM1B0);   // Timer1 PWM mode, OCR1B only
-    TCCR1 = _BV(CS11);
 //    TCCR1 = _BV(CS13) | _BV(CS10);
-    OCR1C = 255;
-    OCR1B = 255;
-    PORTB &= ~(_BV(LED_PIN));
+    //PORTB &= ~(_BV(LED_PIN));
     TCNT1 = 0;
+	TCCR1 = _BV(CS11);
 
 //    PRR |= _BV(PRTIM1);
-
-    mode = MODE_OFF;
+	sei();
 }
 
 void loop()
