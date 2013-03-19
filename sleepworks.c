@@ -108,6 +108,12 @@ void loop()
 //                    TCNT1 = 0;
                     break;
                 case MODE_SLOWBLINK:
+                    OCR1B = 255;
+                    blink_on = 0;
+                    TCNT0 = 0;
+                    timer0_count = 2;
+                    set_sleep_mode(SLEEP_MODE_IDLE);
+                    break;
                 case MODE_FASTBLINK:
                     OCR1B = 255;
                     blink_on = 0;
